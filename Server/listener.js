@@ -1,8 +1,11 @@
 const http = require("http");
 const port = 3000;
 
+//const FileReader = require("filereader");
+var FileAPI = require("file-api"), File = FileAPI.File, FileReader = FileAPI.FileReader;
 const express = require("express");
 const bodyParser = require("body-parser");
+const fs = require("fs");
 
 const app = express();
 const API_TOKEN = "1060304981152-si250lqq588r02461anohh8uj0g6207v.apps.googleusercontent.com"
@@ -42,5 +45,22 @@ function GetAPIResponse(img) {
   post_req.end();
 }
 
+function encodeImage(filePath) {
+  // var file = new File(filePath);
+  // console.log(file);
+  // var reader = new FileReader();
+  // console.log("got reader");
+  // //reader.setNodeChunkEncoding(false);
+  // reader.onloadend = function() {
+  //   console.log("RESULT", reader.result);
+  //   reader.readAsDataURL(file);
+  // }
+  var bitmap = fs.readFileSync(filePath);
+  var encoded = new Buffer(bitmap).toString("base64");
+  return encoded;
+}
+
+var encodedImage = encodeImage("/Users/georgiaeshay/Downloads/1_3wn7FLjhZ3aynRQyTdDD4Q.jpeg");
+//GetAPIResponse(encodedImage);
 
 app.listen(8080);
