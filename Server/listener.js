@@ -93,14 +93,32 @@ fs.readFile("results.json", "utf8", function readFileCallback(err, data) {
 
 function sendCode(codeString, targetAddress) {
   var post_options = {
-    host: targetAddress + ":3000";
+    host: targetAddress,
+    method: "POST",
+    headers: {
+      "Content-Disposition": "attachment; filename=code.txt",
+      "Content-Type": "text/plain"
+    }
   }
+
+  var post_req = http.request(post_options, function(res) {
+    res.setEncoding("utf8");
+    res.on("data", function(chunk) {
+      console.log("Response: " + chunk);
+    });
+  });
+
+  post_req.write(post_data);
+  post_req.end();
 
 }
 
 app.post("/image", async function(req, res) {
   var encodedImage = req.body.img;
   var targetAddress = req.body.ip;
+
+  console.log(encodedImage);
+  console.log(targetAddress);
 
   var visionAPIResults = parseVision(encodedImage);
   var codeString = fixCamelCase(visionAPIResults);
