@@ -1,2 +1,2 @@
 # hackmit2018
-well think of one
+we'll think of one
