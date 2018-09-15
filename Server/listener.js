@@ -1,10 +1,8 @@
 const http = require("http");
 const port = 3000;
 
-//const API_TOKEN = "39248212264-ha3tf2b00lhvf799oqks0mp73q4mv5ga.apps.googleusercontent.com"
-const API_TOKEN = "AIzaSyDXvFg03qsCUN6vW4XpMk0vD6oCnwdWFsk";
 
-//const FileReader = require("filereader");
+
 var FileAPI = require("file-api"), File = FileAPI.File, FileReader = FileAPI.FileReader;
 const express = require("express");
 const bodyParser = require("body-parser");
@@ -24,11 +22,6 @@ async function parseVision(img) {
     "image": {
       "content": img
     }
-    // "features": [
-    //   {
-    //     "type": "TEXT_DETECTION"
-    //   }
-    // ]
   };
 
   var results = await client.documentTextDetection(request);
@@ -95,16 +88,21 @@ fs.readFile("results.json", "utf8", function readFileCallback(err, data) {
   } else {
     var visionResults = JSON.parse(data);
     console.log(fixCamelCase(visionResults));
-
   }
 });
 
+function sendCode(codeString, targetAddress) {
+  var post_options = {
+    host: targetAddress + ":3000";
+  }
+
+}
 
 app.post("/image", async function(req, res) {
   var encodedImage = req.body.img;
   var targetAddress = req.body.ip;
 
-  var visionAPIResults = getVisionResults(encodedImage);
+  var visionAPIResults = parseVision(encodedImage);
   var codeString = fixCamelCase(visionAPIResults);
 
   sendCode(codeString, targetAddress);
