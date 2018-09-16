@@ -1,5 +1,5 @@
 # Codify
-we'll think of one
+Whiteboard -> IDE
 
 ## Inspiration
 Many a night spent with the whiteboard, coding furiously away at our homeworks.
