@@ -9,6 +9,7 @@ const bodyParser = require("body-parser");
 const fs = require("fs");
 const request = require("request");
 const vision = require("@google-cloud/vision");
+const XMLHttpRequest = require("xmlhttprequest").XMLHttpRequest;
 //if this is put on a different computer, you must set options (they are in local variables on mine)
 const client = new vision.ImageAnnotatorClient();
 const app = express();
@@ -41,10 +42,39 @@ async function getVisionResults(img) {
   fs.writeFile("results.json", jsonString, "utf8");
 }
 
+function lev(a, b, i, j) {
+  if (Math.min(i, j) == 0) {
+    return Math.max(i, j);
+  } else {
+    var arg1 = lev(a, b, i-1, j) + 1;
+    var arg2 = lev(a, b, i, j-1) + 1;
+    var arg3 = lev(a, b, i-1, j-1) + (a[i] != b[j]);
+    return Math.min(arg1, arg2, arg3);
+  }
+}
+
+
+function levenshteinDistance (s, t) {
+    if (!s.length) return t.length;
+    if (!t.length) return s.length;
+
+    return Math.min(
+        levenshteinDistance(s.substr(1), t) + 1,
+        levenshteinDistance(t.substr(1), s) + 1,
+        levenshteinDistance(s.substr(1), t.substr(1)) + (s[0] !== t[0] ? 1 : 0)
+    ) + 1;
+}
+
+function stringdist(a, b) {
+  return lev(a, b, a.length, b.length);
+}
+
+
 function fixCamelCase(visionResults) {
   var words = [[visionResults[0].textAnnotations[1].description]];
   var wordsIndex = 0;
   var xDiffs = [[]];
+  var lineStarts = [visionResults[0].textAnnotations[1].boundingPoly.vertices[0].x];
   for (var i = 1; i < visionResults[0].textAnnotations.length-1; i++) {
     var thisAnnotation = visionResults[0].textAnnotations[i];
     var nextAnnotation = visionResults[0].textAnnotations[i+1];
@@ -54,11 +84,14 @@ function fixCamelCase(visionResults) {
       wordsIndex++;
       words.push([]);
       xDiffs.push([]);
+      lineStarts.push(nextAnnotation.boundingPoly.vertices[0].x);
     } else {
       xDiffs[wordsIndex].push(xDifference);
     }
     words[wordsIndex].push(nextAnnotation.description);
   }
+
+  console.log(lineStarts);
 
   var wordStrings = [];
   for (var i = 0; i < words.length; i++) {
@@ -82,6 +115,7 @@ function fixCamelCase(visionResults) {
 }
 
 
+
 fs.readFile("results.json", "utf8", function readFileCallback(err, data) {
   if(err) {
     console.log(err);
@@ -92,26 +126,28 @@ fs.readFile("results.json", "utf8", function readFileCallback(err, data) {
 });
 
 function sendCode(codeString, targetAddress) {
-  var post_options = {
-    host: targetAddress,
+
+
+  var options = {
+    hostname: targetAddress,
+    port: 8080,
+    path: "/code",
     method: "POST",
     headers: {
-      "Content-Disposition": "attachment; filename=code.txt",
-      "Content-Type": "text/plain"
+        "Content-Disposition": "attachment; filename=code.txt",
+        "Content-Type": "text/plain"
     }
-  }
+  };
 
-  var post_req = http.request(post_options, function(res) {
-    res.setEncoding("utf8");
-    res.on("data", function(chunk) {
-      console.log("Response: " + chunk);
-    });
+  var req = http.request(options, function(res) {
+    console.log(res);
   });
 
-  post_req.write(post_data);
-  post_req.end();
-
+  req.write(codeString);
+  req.end();
 }
+
+sendCode("Hi there im code", "192.168.43.54");
 
 app.post("/image", async function(req, res) {
   var encodedImage = req.body.img;
