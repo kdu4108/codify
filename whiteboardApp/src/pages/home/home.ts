@@ -41,7 +41,6 @@ export class HomePage {
           ip: this.ipAddress
         }
         var imgString = JSON.stringify(imgObject);
-        // console.log(imgString);
         xhr.onload = function() {
           console.log(xhr.responseText);
         }

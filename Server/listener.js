@@ -14,8 +14,8 @@ const XMLHttpRequest = require("xmlhttprequest").XMLHttpRequest;
 // const client = new vision.ImageAnnotatorClient();
 const app = express();
 
-app.use(bodyParser.json());
-app.use(bodyParser.text({limited:"50mb", extended:true}));
+app.use(bodyParser.json({limit: "50mb", extended: true}));
+app.use(bodyParser.text({limit:"50mb", extended:true}));
 
 const average = arr => arr.reduce( ( p, c ) => p + c, 0 ) / arr.length;
 
@@ -153,7 +153,7 @@ function fixCamelCase(visionResults) {
 
   // loop through each line of text
   for (var i = 0; i < words.length; i++) {
-    
+
     var wordString = "";
     // attach necessary number of tabs
     for (var t = 0; t < lineTabs[i]; t++){
@@ -210,20 +210,21 @@ function sendCode(codeString, targetAddress) {
   req.end();
 }
 
-sendCode("thing", "192.168.43.54");
+//sendCode("thing", "192.168.43.54");
 
 app.post("/image", async function(req, res) {
-  console.log(req.body);
-  // var encodedImage = req.body.img;
-  // var targetAddress = req.body.ip;
-  //
-  // console.log(encodedImage);
-  // console.log(targetAddress);
-  //
-  // var visionAPIResults = parseVision(encodedImage);
-  // var codeString = fixCamelCase(visionAPIResults);
-  //
-  // sendCode(codeString, targetAddress);
+  var imgObject = JSON.parse(req.body);
+
+  var encodedImage = imgObject.img;
+  var targetAddress = imgObject.ip;
+
+  console.log(encodedImage);
+  console.log(targetAddress);
+
+  var visionAPIResults = parseVision(encodedImage);
+  var codeString = fixCamelCase(visionAPIResults);
+
+  sendCode(codeString, targetAddress);
 });
 
 
