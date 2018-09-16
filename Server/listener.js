@@ -10,6 +10,8 @@ const fs = require("fs");
 const request = require("request");
 const vision = require("@google-cloud/vision");
 const XMLHttpRequest = require("xmlhttprequest").XMLHttpRequest;
+const lang = require('language-classifier');
+
 //if this is put on a different computer, you must set options (they are in local variables on mine)
 // const client = new vision.ImageAnnotatorClient();
 const app = express();
@@ -186,7 +188,10 @@ fs.readFile("results.json", "utf8", function readFileCallback(err, data) {
     console.log(err);
   } else {
     var visionResults = JSON.parse(data);
-    console.log(fixCamelCase(visionResults));
+    outputString = fixCamelCase(visionResults);
+    console.log(outputString);
+    console.log(lang(outputString));
+
   }
 });
 
