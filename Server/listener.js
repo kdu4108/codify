@@ -11,7 +11,7 @@ const request = require("request");
 const vision = require("@google-cloud/vision");
 const XMLHttpRequest = require("xmlhttprequest").XMLHttpRequest;
 //if this is put on a different computer, you must set options (they are in local variables on mine)
-const client = new vision.ImageAnnotatorClient();
+// const client = new vision.ImageAnnotatorClient();
 const app = express();
 
 app.use(bodyParser.json());
@@ -69,6 +69,52 @@ function stringdist(a, b) {
   return lev(a, b, a.length, b.length);
 }
 
+function getSpaceSize(words, xDiffs){
+  let spaceDiffs = [];
+  for (var i = 0; i < words.length; i++) {
+    if (xDiffs[i].length > 1) {
+      averageXDiff = average(xDiffs[i]);
+      for (var j = 0; j < xDiffs[i].length; j++) {
+        if (xDiffs[i][j] >= averageXDiff) {
+          spaceDiffs.push(xDiffs[i][j]);
+        }
+      }
+    }
+  }
+  return average(spaceDiffs);
+}
+
+function getLineTabGroups(lineStarts, threshold){
+  let avgStart = average(lineStarts.map(x => {return x[0]}));
+  console.log(avgStart);
+  console.log(lineStarts);
+
+  let midIndex = lineStarts.findIndex(function(number) {
+    return number[0] > avgStart;
+  }) - 1;
+  console.log(midIndex);
+
+  let lowerList = lineStarts.slice(0, midIndex + 1);
+  let upperList = lineStarts.slice(midIndex + 1, lineStarts.length + 1);
+
+  console.log(lowerList);
+  console.log(upperList);
+
+  let lowerAvg = average(lowerList.map(x => {return x[0]}));
+  let upperAvg = average(upperList.map(x => {return x[0]}));
+
+  console.log(lowerAvg);
+  console.log(upperAvg);
+
+  if (upperAvg - lowerAvg > threshold) {
+    return getLineTabGroups(lowerList, threshold).concat(getLineTabGroups(upperList, threshold))
+  }
+  else {
+    // base case
+    return [lineStarts];
+  }
+}
+
 
 function fixCamelCase(visionResults) {
   var words = [[visionResults[0].textAnnotations[1].description]];
@@ -91,16 +137,31 @@ function fixCamelCase(visionResults) {
     words[wordsIndex].push(nextAnnotation.description);
   }
 
-  first = Math.min(lineStarts);
-  lineStarts = lineStarts.map(x => x - first);
-  console.log(lineStarts);
-
+  console.log(words);
+  let lineTabGroups = getLineTabGroups(lineStarts.map((element, index) => {return [element, index]}).sort((a, b) => { return a[0] - b[0]}), 2*getSpaceSize(words, xDiffs));
+  console.log(lineTabGroups);
+  let lineTabs = new Array(lineStarts.length);
+  for (var i = 0; i < lineTabGroups.length; i++){
+    for (var j = 0; j < lineTabGroups[i].length; j++){
+      lineTabs[lineTabGroups[i][j][1]] = i;
+    }
+  }
+  console.log(lineTabs);
 
   var wordStrings = [];
+
+  // loop through each line of text
   for (var i = 0; i < words.length; i++) {
+    
+    var wordString = "";
+    // attach necessary number of tabs
+    for (var t = 0; t < lineTabs[i]; t++){
+      wordString += "\t";
+    }
+    wordString += words[i][0];
+    // check if there's more than 2 words left in the line
     if (xDiffs[i].length > 1) {
       averageXDiff = average(xDiffs[i]);
-      var wordString = words[i][0];
       for (var j = 0; j < xDiffs[i].length; j++) {
         if (xDiffs[i][j] < averageXDiff) {
           wordString += words[i][j+1];
@@ -129,8 +190,6 @@ fs.readFile("results.json", "utf8", function readFileCallback(err, data) {
 });
 
 function sendCode(codeString, targetAddress) {
-
-
   var options = {
     hostname: targetAddress,
     port: 8080,
