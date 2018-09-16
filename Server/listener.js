@@ -91,7 +91,10 @@ function fixCamelCase(visionResults) {
     words[wordsIndex].push(nextAnnotation.description);
   }
 
+  first = Math.min(lineStarts);
+  lineStarts = lineStarts.map(x => x - first);
   console.log(lineStarts);
+
 
   var wordStrings = [];
   for (var i = 0; i < words.length; i++) {
