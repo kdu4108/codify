@@ -15,6 +15,7 @@ const client = new vision.ImageAnnotatorClient();
 const app = express();
 
 app.use(bodyParser.json());
+app.use(bodyParser.text({limited:"50mb", extended:true}));
 
 const average = arr => arr.reduce( ( p, c ) => p + c, 0 ) / arr.length;
 
@@ -150,20 +151,20 @@ function sendCode(codeString, targetAddress) {
   req.end();
 }
 
-sendCode("completely different message", "192.168.43.54");
+sendCode("thing", "192.168.43.54");
 
 app.post("/image", async function(req, res) {
   console.log(req.body);
-  var encodedImage = req.body.img;
-  var targetAddress = req.body.ip;
-
-  console.log(encodedImage);
-  console.log(targetAddress);
-
-  var visionAPIResults = parseVision(encodedImage);
-  var codeString = fixCamelCase(visionAPIResults);
-
-  sendCode(codeString, targetAddress);
+  // var encodedImage = req.body.img;
+  // var targetAddress = req.body.ip;
+  //
+  // console.log(encodedImage);
+  // console.log(targetAddress);
+  //
+  // var visionAPIResults = parseVision(encodedImage);
+  // var codeString = fixCamelCase(visionAPIResults);
+  //
+  // sendCode(codeString, targetAddress);
 });
 
 

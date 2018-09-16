@@ -32,20 +32,20 @@ export class HomePage {
 
     this.camera.getPicture(options).then((imageData) => {
       this.base64Image = "data:image/jpeg;base64," + imageData;
-      if (this.ipAddress.length > 0) {
+      if (true) {
         var xhr = new XMLHttpRequest();
         xhr.open("POST", "http://192.168.43.23:8080/image", true);
         xhr.setRequestHeader("Content-Type", "text/plain");
-        // var imgObject = {
-        //   img: this.base64Image,
-        //   ip: this.ipAddress
-        // }
-        // var imgString = JSON.stringify(imgObject);
+        var imgObject = {
+          img: this.base64Image,
+          ip: this.ipAddress
+        }
+        var imgString = JSON.stringify(imgObject);
         // console.log(imgString);
         xhr.onload = function() {
           console.log(xhr.responseText);
         }
-        xhr.send("exampleText");
+        xhr.send(imgString);
 
       }
     }, (err) => {
