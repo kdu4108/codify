@@ -15,6 +15,7 @@ const XMLHttpRequest = require("xmlhttprequest").XMLHttpRequest;
 const app = express();
 
 app.use(bodyParser.json());
+app.use(bodyParser.text({limited:"50mb", extended:true}));
 
 const average = arr => arr.reduce( ( p, c ) => p + c, 0 ) / arr.length;
 
@@ -209,19 +210,20 @@ function sendCode(codeString, targetAddress) {
   req.end();
 }
 
-sendCode("Hi there im code", "192.168.43.54");
+sendCode("thing", "192.168.43.54");
 
 app.post("/image", async function(req, res) {
-  var encodedImage = req.body.img;
-  var targetAddress = req.body.ip;
-
-  console.log(encodedImage);
-  console.log(targetAddress);
-
-  var visionAPIResults = parseVision(encodedImage);
-  var codeString = fixCamelCase(visionAPIResults);
-
-  sendCode(codeString, targetAddress);
+  console.log(req.body);
+  // var encodedImage = req.body.img;
+  // var targetAddress = req.body.ip;
+  //
+  // console.log(encodedImage);
+  // console.log(targetAddress);
+  //
+  // var visionAPIResults = parseVision(encodedImage);
+  // var codeString = fixCamelCase(visionAPIResults);
+  //
+  // sendCode(codeString, targetAddress);
 });
 
 
