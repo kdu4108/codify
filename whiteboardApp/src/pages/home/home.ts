@@ -31,7 +31,8 @@ export class HomePage {
     }
 
     this.camera.getPicture(options).then((imageData) => {
-      this.base64Image = "data:image/jpeg;base64," + imageData;
+      //"data:image/jpeg;base64," +
+      this.base64Image =  imageData;
       if (true) {
         var xhr = new XMLHttpRequest();
         xhr.open("POST", "http://192.168.43.23:8080/image", true);

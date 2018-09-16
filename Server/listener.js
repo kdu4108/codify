@@ -13,7 +13,7 @@ const XMLHttpRequest = require("xmlhttprequest").XMLHttpRequest;
 const lang = require('language-classifier');
 
 //if this is put on a different computer, you must set options (they are in local variables on mine)
-// const client = new vision.ImageAnnotatorClient();
+const client = new vision.ImageAnnotatorClient();
 const app = express();
 
 app.use(bodyParser.json({limit: "50mb", extended: true}));
@@ -88,26 +88,27 @@ function getSpaceSize(words, xDiffs){
 }
 
 function getLineTabGroups(lineStarts, threshold){
+
+
+  if (lineStarts.length == 1) {
+    return [lineStarts];
+  }
+  console.log("Line starts: " + lineStarts);
+
   let avgStart = average(lineStarts.map(x => {return x[0]}));
-  console.log(avgStart);
-  console.log(lineStarts);
 
   let midIndex = lineStarts.findIndex(function(number) {
     return number[0] > avgStart;
   }) - 1;
-  console.log(midIndex);
 
   let lowerList = lineStarts.slice(0, midIndex + 1);
   let upperList = lineStarts.slice(midIndex + 1, lineStarts.length + 1);
 
-  console.log(lowerList);
-  console.log(upperList);
 
   let lowerAvg = average(lowerList.map(x => {return x[0]}));
   let upperAvg = average(upperList.map(x => {return x[0]}));
 
-  console.log(lowerAvg);
-  console.log(upperAvg);
+
 
   if (upperAvg - lowerAvg > threshold) {
     return getLineTabGroups(lowerList, threshold).concat(getLineTabGroups(upperList, threshold))
@@ -140,16 +141,14 @@ function fixCamelCase(visionResults) {
     words[wordsIndex].push(nextAnnotation.description);
   }
 
-  console.log(words);
-  let lineTabGroups = getLineTabGroups(lineStarts.map((element, index) => {return [element, index]}).sort((a, b) => { return a[0] - b[0]}), 2*getSpaceSize(words, xDiffs));
-  console.log(lineTabGroups);
+  let lineTabGroups = getLineTabGroups(lineStarts.map((element, index) => {return [element, index]}).sort((a, b) => { return a[0] - b[0]}), 1.5*getSpaceSize(words, xDiffs));
   let lineTabs = new Array(lineStarts.length);
   for (var i = 0; i < lineTabGroups.length; i++){
     for (var j = 0; j < lineTabGroups[i].length; j++){
       lineTabs[lineTabGroups[i][j][1]] = i;
     }
   }
-  console.log(lineTabs);
+
 
   var wordStrings = [];
 
@@ -161,9 +160,9 @@ function fixCamelCase(visionResults) {
     for (var t = 0; t < lineTabs[i]; t++){
       wordString += "\t";
     }
-    wordString += words[i][0];
     // check if there's more than 2 words left in the line
     if (xDiffs[i].length > 1) {
+      wordString += words[i][0];
       averageXDiff = average(xDiffs[i]);
       for (var j = 0; j < xDiffs[i].length; j++) {
         if (xDiffs[i][j] < averageXDiff) {
@@ -172,38 +171,43 @@ function fixCamelCase(visionResults) {
           wordString += " " + words[i][j+1];
         }
       }
+
+
       wordStrings.push(wordString);
     } else {
-      wordStrings.push(words[i].join(" "));
+      wordStrings.push(wordString + words[i].join(" "));
     }
   }
-
+  console.log(wordStrings.join("\n"));
   return wordStrings.join("\n");
 }
 
 
 
-fs.readFile("results.json", "utf8", function readFileCallback(err, data) {
-  if(err) {
-    console.log(err);
-  } else {
-    var visionResults = JSON.parse(data);
-    outputString = fixCamelCase(visionResults);
-    console.log(outputString);
-    console.log(lang(outputString));
+// fs.readFile("results.json", "utf8", function readFileCallback(err, data) {
+//   if(err) {
+//     console.log(err);
+//   } else {
+//     var visionResults = JSON.parse(data);
+//     outputString = fixCamelCase(visionResults);
+//     console.log(outputString);
+//     console.log(lang(outputString));
+//
+//   }
+// });
 
-  }
-});
-
-function sendCode(codeString, targetAddress) {
+function sendCode(codeString, codeLang, targetAddress) {
   var options = {
     hostname: targetAddress,
     port: 8080,
     path: "/code",
     method: "POST",
+    // headers: {
+    //     "Content-Disposition": "attachment; filename=code.txt",
+    //     "Content-Type": "text/plain"
+    // }
     headers: {
-        "Content-Disposition": "attachment; filename=code.txt",
-        "Content-Type": "text/plain"
+      "Content-Type": "text/plain"
     }
   };
 
@@ -211,7 +215,7 @@ function sendCode(codeString, targetAddress) {
     console.log(res);
   });
 
-  req.write(codeString);
+  req.write(JSON.stringify({code: codeString, lang: codeLang}));
   req.end();
 }
 
@@ -223,13 +227,19 @@ app.post("/image", async function(req, res) {
   var encodedImage = imgObject.img;
   var targetAddress = imgObject.ip;
 
-  console.log(encodedImage);
-  console.log(targetAddress);
+  // console.log(encodedImage);
+  // console.log(targetAddress);
 
-  var visionAPIResults = parseVision(encodedImage);
+  var visionAPIResults = await parseVision(encodedImage);
   var codeString = fixCamelCase(visionAPIResults);
-
-  sendCode(codeString, targetAddress);
+  var codeLang = "";
+  if( codeString.indexOf("{") > -1 ) {
+    codeLang = "C";
+  } else {
+    codeLang = "Python";
+  }
+  console.log(codeLang);
+  sendCode(codeString, codeLang, targetAddress);
 });
 
 
