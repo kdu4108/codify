@@ -150,9 +150,10 @@ function sendCode(codeString, targetAddress) {
   req.end();
 }
 
-sendCode("Hi there im code", "192.168.43.54");
+sendCode("completely different message", "192.168.43.54");
 
 app.post("/image", async function(req, res) {
+  console.log(req.body);
   var encodedImage = req.body.img;
   var targetAddress = req.body.ip;
 
