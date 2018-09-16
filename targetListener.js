@@ -17,17 +17,26 @@ app.use(bodyParser.text());
 
 
 app.post("/code", async function(req, res) {
-  console.log(req.body);
-  fs.writeFile('code.txt', req.body , function (err) {
-    if (err) console.log("error");
-    console.log("saved.");
-    spawn.exec("open code.txt");
+  var file = JSON.parse(req.body);
+  console.log(file.code)
+  var options = { flag : 'w' };
+  if (file.lang === "Python") {
+    fs.writeFile('code.py', file.code, options, function (err) {
+      if (err) console.log("error");
+      console.log("saved.");
+      spawn.exec("open code.py");
+      spawn.exec("node targetListener.js");
+    });
+  }
+  else  {
+     fs.writeFile('code.c', file.code, options, function (err) {
+      if (err) console.log("error");
+      console.log("saved.");
+      spawn.exec("open code.c");
+      spawn.exec("node targetListener.js");
   });
+  }
 });
 
 
-var server = app.listen(8080)
-
-function closeServer() {
-  server.close(function() { console.log('Doh :('); });
-};
+var server = app.listen(8080);
