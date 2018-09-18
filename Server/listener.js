@@ -1,9 +1,6 @@
 const http = require("http");
 const port = 3000;
 
-
-
-var FileAPI = require("file-api"), File = FileAPI.File, FileReader = FileAPI.FileReader;
 const express = require("express");
 const bodyParser = require("body-parser");
 const fs = require("fs");
@@ -21,6 +18,7 @@ app.use(bodyParser.text({limit:"50mb", extended:true}));
 
 const average = arr => arr.reduce( ( p, c ) => p + c, 0 ) / arr.length;
 
+//contacts google vision API and gets results of document text detection
 async function parseVision(img) {
   var request = {
     "image": {
@@ -32,6 +30,7 @@ async function parseVision(img) {
   return results;
 }
 
+//encodes image as base 64
 function encodeImage(filePath) {
   var bitmap = fs.readFileSync(filePath);
   var encoded = new Buffer(bitmap).toString("base64");
@@ -45,6 +44,8 @@ async function getVisionResults(img) {
   fs.writeFile("results.json", jsonString, "utf8");
 }
 
+
+//levenshtein algorithm (from wikipedia)
 function lev(a, b, i, j) {
   if (Math.min(i, j) == 0) {
     return Math.max(i, j);
@@ -71,6 +72,7 @@ function levenshteinDistance (s, t) {
 function stringdist(a, b) {
   return lev(a, b, a.length, b.length);
 }
+
 
 function getSpaceSize(words, xDiffs){
   let spaceDiffs = [];
@@ -120,11 +122,16 @@ function getLineTabGroups(lineStarts, threshold){
 }
 
 
+//fixes camel case and tabbing in vision results
 function fixCamelCase(visionResults) {
+  //words is a 2d array - rows are lines, each there are words in each line
+  //start words with the first word in the first line
   var words = [[visionResults[0].textAnnotations[1].description]];
   var wordsIndex = 0;
   var xDiffs = [[]];
+  //the beginning of each line
   var lineStarts = [visionResults[0].textAnnotations[1].boundingPoly.vertices[0].x];
+  //
   for (var i = 1; i < visionResults[0].textAnnotations.length-1; i++) {
     var thisAnnotation = visionResults[0].textAnnotations[i];
     var nextAnnotation = visionResults[0].textAnnotations[i+1];

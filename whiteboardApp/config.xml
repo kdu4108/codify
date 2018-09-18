@@ -87,4 +87,5 @@
     </plugin>
     <allow-navigation href="http://192.168.43.23:8101" />
     <allow-navigation href="http://172.16.156.21:8101" />
+    <engine name="ios" spec="4.5.5" />
 </widget>
