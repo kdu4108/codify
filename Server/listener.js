@@ -219,7 +219,7 @@ function sendCode(codeString, codeLang, targetAddress) {
   };
 
   var req = http.request(options, function(res) {
-    console.log(res);
+    //console.log(res);
   });
 
   req.write(JSON.stringify({code: codeString, lang: codeLang}));
