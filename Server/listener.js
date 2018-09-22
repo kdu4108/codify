@@ -142,6 +142,7 @@ function getLineTabGroups(lineStarts, threshold){
 function slantDetection(visionResults) {
   var fullAnnotation = visionResults[0].fullTextAnnotation;
   var slants = [];
+  var words = [];
   for (var p = 0; p < fullAnnotation.pages.length; p++) {
     for (var b = 0; b < fullAnnotation.pages[p].blocks.length; b++) {
       for (var r = 0; r < fullAnnotation.pages[p].blocks[b].paragraphs.length; r++) {
@@ -155,16 +156,39 @@ function slantDetection(visionResults) {
             var slant = (last_char_center[1]-first_char_center[1])/(last_char_center[0]-first_char_center[0]);
             slants.push(slant);
           }
+          var wordString = word.symbols.map(s => s.text).join("");
+          var wordObject = JSON.parse(JSON.stringify(word));
+          wordObject["text"] = wordString;
+          words.push(wordObject);
         }
       }
     }
   }
-  return average(slants);
+  return {
+    "slant": average(slants),
+    "words": words
+  };
 }
 
 function arrangeWords(visionResults) {
-  var slant = slantDetection(visionResults);
+  var slantResults = slantDetection(visionResults);
+  var slant = slantResults.slant;
+  var words = slantResults.words;
+
+  var lines = [words[0]];
+  for (var w = 1; w < words.length; w++) {
+
+  }
 }
+
+function translateCoordinates(slant, point) {
+  var theta = Math.atan(slant);
+  var xPrime = point[0] * Math.cos(theta) + point[1] * Math.sin(theta);
+  var yPrime = point[1] * Math.cos(theta) + point[0] * Math.sin(theta);
+  return [xPrime, yPrime];
+}
+
+
 
 //fixes camel case and tabbing in vision results
 function fixCamelCase(visionResults, labelResults) {
@@ -172,7 +196,10 @@ function fixCamelCase(visionResults, labelResults) {
   //start words with the first word in the first line
   //var xBox = visionResults[0].textAnnotations[0].boundingPoly.vertices
   var slant = slantDetection(visionResults);
-  console.log("slant: " + slant);
+  console.log("slant: " + slant.slant);
+  for (var w = 0; w < slant.words.length; w++) {
+    console.log(slant.words[w].text);
+  }
 
   var words = [[visionResults[0].textAnnotations[1].description]];
   var wordsIndex = 0;
