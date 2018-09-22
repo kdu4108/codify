@@ -272,6 +272,7 @@ function arrangeWords(visionResults) {
     lineStarts.push(translateCoordinates(slant, getCenter(categorizedLines[c][0].symbols[0]))[0]);
   }
 
+
   // var sortedLineStarts = lineStarts.sort((a,b) => {return a-b});
   // var onePoint = Math.max(...sortedLineStarts);
   // var zeroPoint = Math.min(...sortedLineStarts);
@@ -461,6 +462,9 @@ app.post("/image", async function(req, res) {
   var imgObject = JSON.parse(req.body);
 
   var encodedImage = imgObject.img;
+
+  fs.writeFile("currentIMG.png", encodedImage, "base64");
+
   var targetAddress = imgObject.ip;
 
   // console.log(encodedImage);
