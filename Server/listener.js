@@ -94,7 +94,6 @@ function stringdist(a, b) {
 
 function getSpaceSize(words, xDiffs){
   let spaceDiffs = [];
-  console.log(xDiffs);
   for (var i = 0; i < words.length; i++) {
     if (xDiffs[i].length > 1) {
       averageXDiff = average(xDiffs[i]);
@@ -105,7 +104,6 @@ function getSpaceSize(words, xDiffs){
       }
     }
   }
-  console.log(average(spaceDiffs));
   return average(spaceDiffs);
 }
 
@@ -130,6 +128,14 @@ function categorize(lst, thresh) {
   } else {
     return [lst];
   }
+}
+
+function arrayDiff(arr) {
+  diffs = [];
+  for(var i = 1; i < arr.length; i++) {
+    diffs.push(arr[i]-arr[i-1]);
+  }
+  return diffs;
 }
 
 function getLineTabGroups(lineStarts, threshold){
@@ -199,6 +205,34 @@ function slantDetection(visionResults) {
   };
 }
 
+function xDifference(slant, arr) {
+  var diffs = [];
+  for (var i = 1; i < arr.length; i++) {
+    var thisX = translateCoordinates(slant, getCenter(arr[i].symbols[0]))[0];
+    var lastX = translateCoordinates(slant, getCenter(arr[i-1].symbols[arr[i-1].symbols.length-1]))[0];
+    diffs.push(thisX-lastX);
+  }
+  return diffs;
+}
+
+function arrayDivide(arr, d) {
+  var div = [];
+  for (var i = 0; i < arr.length; i++) {
+    div.push(arr[i]/d);
+  }
+  return div;
+}
+
+function arrayFunc(arr, f) {
+  var funced = [];
+  for (var i = 0; i < arr.length; i++) {
+    console.log(arr[i]);
+    console.log(f(arr[i]));
+    funced.push(f(arr[i]));
+  }
+  return funced;
+}
+
 function arrangeWords(visionResults) {
   var slantResults = slantDetection(visionResults);
   var slant = slantResults.slant;
@@ -213,7 +247,6 @@ function arrangeWords(visionResults) {
     translatedYs.push([translateCoordinates(slant, getCenter(words[w].symbols[0]))[1],w]);
   }
 
-  var lineIndex = 0;
   for(var t = 1; t < textAnnotations.length-1; t++) {
     //not quite accurate with translation - bc we are just picking a corner, and we need to do that smarter
     var thisWord = translateCoordinates(slant, [textAnnotations[t].boundingPoly.vertices[1].x, textAnnotations[t].boundingPoly.vertices[1].y]);
@@ -221,10 +254,6 @@ function arrangeWords(visionResults) {
 
     if (!(nextWord[0] < thisWord[0] && nextWord[1] > thisWord[1])) {
       xDiffsFlat.push(nextWord[0] - thisWord[0]);
-      xDiffs[lineIndex].push(nextWord[0]-thisWord[0]);
-    } else {
-      xDiffs.push([]);
-      lineIndex++;
     }
   }
 
@@ -240,10 +269,26 @@ function arrangeWords(visionResults) {
 
   var lineStarts = [];
   for (var c = 0; c < categorizedLines.length; c++) {
-    lineStarts.push([translateCoordinates(slant, getCenter(categorizedLines[c][0].symbols[0]))[0], c]);
+    lineStarts.push(translateCoordinates(slant, getCenter(categorizedLines[c][0].symbols[0]))[0]);
   }
 
-  let lineTabGroups = getLineTabGroups(lineStarts.map((element, index) => {return [element, index]}).sort((a, b) => { return a[0] - b[0]}), 1.5*getSpaceSize(categorizedLines, xDiffs));
+  // var sortedLineStarts = lineStarts.sort((a,b) => {return a-b});
+  // var onePoint = Math.max(...sortedLineStarts);
+  // var zeroPoint = Math.min(...sortedLineStarts);
+  // var normalized = arrayFunc(sortedLineStarts, function(a) {return (a-zeroPoint)/(onePoint-zeroPoint);});
+  // var diffs = arrayDiff(normalized);
+  // var inverseDiffs = arrayFunc(diffs, function(a) {return 1/a;});
+  //
+  // var lineWindex = lineStarts.map((element,index) => {return [element, index]});
+  // lineWindex.sort((a,b) => {return a[0]-b[0]});
+
+
+
+
+  var xDiffs = categorizedLines.map(line => xDifference(slant, line));
+  var mappedLines = lineStarts.map((element, index) => {return [element, index]}).sort((a, b) => { return a[0] - b[0]});
+  var averageSpace = 1.5*getSpaceSize(categorizedLines, xDiffs);
+  let lineTabGroups = getLineTabGroups(mappedLines, averageSpace);
   let lineTabs = new Array(lineStarts.length);
   for (var i = 0; i < lineTabGroups.length; i++){
     for (var j = 0; j < lineTabGroups[i].length; j++){
@@ -252,6 +297,8 @@ function arrangeWords(visionResults) {
   }
 
   var wordStrings = [];
+
+
 
   // loop through each line of text
   for (var i = 0; i < categorizedLines.length; i++) {
