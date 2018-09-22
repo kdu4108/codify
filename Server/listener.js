@@ -10,7 +10,8 @@ const request = require("request");
 const vision = require("@google-cloud/vision");
 const XMLHttpRequest = require("xmlhttprequest").XMLHttpRequest;
 const lang = require('language-classifier');
-
+const drawing = require("pngjs-draw");
+const png = drawing(require("pngjs").PNG);
 //if this is put on a different computer, you must set options (they are in local variables on mine)
 const client = new vision.ImageAnnotatorClient();
 const app = express();
@@ -233,7 +234,8 @@ function arrayFunc(arr, f) {
   return funced;
 }
 
-function arrangeWords(visionResults) {
+async function arrangeWords(visionResults) {
+
   var slantResults = slantDetection(visionResults);
   var slant = slantResults.slant;
   var words = slantResults.words;
@@ -266,6 +268,13 @@ function arrangeWords(visionResults) {
      });
     categorizedLines[c] = categorizedLines[c].map(a => words[a[1]]);
   }
+
+
+  for (var l = 0; l < categorizedLines.length; l++) {
+    for (var i = 0; i < categorizedLines[l].length; i++) {
+    }
+  }
+
 
   var lineStarts = [];
   for (var c = 0; c < categorizedLines.length; c++) {
@@ -342,7 +351,7 @@ function translateCoordinates(slant, point) {
 
 
 //fixes camel case and tabbing in vision results
-function fixCamelCase(visionResults, labelResults) {
+async function fixCamelCase(visionResults, labelResults) {
   //words is a 2d array - rows are lines, each there are words in each line
   //start words with the first word in the first line
   //var xBox = visionResults[0].textAnnotations[0].boundingPoly.vertices
@@ -352,7 +361,7 @@ function fixCamelCase(visionResults, labelResults) {
     //console.log(slant.words[w].text);
   }
 
-  arrangeWords(visionResults);
+  await arrangeWords(visionResults);
 
   // var words = [[visionResults[0].textAnnotations[1].description]];
   // var wordsIndex = 0;
