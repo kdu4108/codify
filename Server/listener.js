@@ -296,5 +296,9 @@ app.post("/image", async function(req, res) {
   sendCode(codeString, codeLang, targetAddress);
 });
 
+app.get("/test", function(req, res) {
+  res.json({"Message": "Test successful"})
+})
+
 
 app.listen(8080);

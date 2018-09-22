@@ -39,6 +39,7 @@ export class HomePage {
         //xhr.open("POST", "http://192.168.43.23:8080/image", true);
         xhr.open("POST", "http://18.40.34.77:8080/image", true);
         xhr.setRequestHeader("Content-Type", "text/plain");
+        xhr.setRequestHeader("Accept", "*/*");
         var imgObject = {
           img: this.base64Image,
           ip: this.ipAddress
