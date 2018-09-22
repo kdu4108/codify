@@ -139,6 +139,10 @@ function getLineTabGroups(lineStarts, threshold){
   }
 }
 
+function getCenter(char) {
+  return [average(char.boundingBox.vertices.map(v=>v.x)), average(char.boundingBox.vertices.map(v=>v.y))];
+}
+
 function slantDetection(visionResults) {
   var fullAnnotation = visionResults[0].fullTextAnnotation;
   var slants = [];
@@ -151,8 +155,8 @@ function slantDetection(visionResults) {
           if(word.symbols.length > 4) {
             var first_char = word.symbols[0];
             var last_char = word.symbols[word.symbols.length - 1];
-            var first_char_center = [average(first_char.boundingBox.vertices.map(v=>v.x)), average(first_char.boundingBox.vertices.map(v=>v.y))];
-            var last_char_center = [average(last_char.boundingBox.vertices.map(v=>v.x)), average(last_char.boundingBox.vertices.map(v=>v.y))];
+            var first_char_center = getCenter(first_char);
+            var last_char_center = getCenter(last_char);
             var slant = (last_char_center[1]-first_char_center[1])/(last_char_center[0]-first_char_center[0]);
             slants.push(slant);
           }
@@ -175,10 +179,42 @@ function arrangeWords(visionResults) {
   var slant = slantResults.slant;
   var words = slantResults.words;
 
-  var lines = [words[0]];
-  for (var w = 1; w < words.length; w++) {
+
+  var lines = [[words[0].text]];
+  var lineStarts = [translateCoordinates(slant, getCenter(words[0].symbols[0]))];
+  var wordIndex = 0;
+  var xDiffs = [[]];
+  var xs = [getCenter(words[0].symbols[0])];
+  var translatedXs = [translatedCoordinates(getCenter(words[0].symbols[0]))];
+
+  for (var w = 0; w < words.length-1; w++) {
+    var thisWord = words[w];
+    var nextWord = words[w+1];
+
+    var thisWordEnd = getCenter(thisWord.symbols[thisWord.symbols.length-1]);
+    var nextWordStart = getCenter(nextWord.symbols[0])
+
+    thisWordEnd = translateCoordinates(slant, thisWordEnd);
+    nextWordStart = translateCoordinates(slant, nextWordStart);
+
+    xDifference = nextWordStart[0] - thisWordEnd[0];
+    yDifference = nextWordStart[1] - thisWordEnd[1];
+
+    if (xDifference < 0 && yDifference > 0) {
+      wordIndex++;
+      lines.push([]);
+      xDiffs.push([]);
+      lineStarts.push(nextWordStart[0]);
+    } else {
+      xDiffs[wordIndex].push(nextWord.text);
+    }
+    lines[wordIndex].push(nextWord.text);
 
   }
+
+  console.log(lines);
+
+  return "hi";
 }
 
 function translateCoordinates(slant, point) {
@@ -198,8 +234,10 @@ function fixCamelCase(visionResults, labelResults) {
   var slant = slantDetection(visionResults);
   console.log("slant: " + slant.slant);
   for (var w = 0; w < slant.words.length; w++) {
-    console.log(slant.words[w].text);
+    //console.log(slant.words[w].text);
   }
+
+  arrangeWords(visionResults);
 
   var words = [[visionResults[0].textAnnotations[1].description]];
   var wordsIndex = 0;
