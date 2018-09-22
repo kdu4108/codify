@@ -21,7 +21,7 @@ app.use(bodyParser.text({limit:"50mb", extended:true}));
 const average = arr => arr.reduce( ( p, c ) => p + c, 0 ) / arr.length;
 
 //contacts google vision API and gets results of document text detection
-async function parseVision(img) {
+async function parseTextVision(img) {
   var request = {
     "image": {
       "content": img
@@ -29,6 +29,17 @@ async function parseVision(img) {
   };
 
   var results = await client.documentTextDetection(request);
+  return results;
+}
+
+async function parseLabelVision(img) {
+  var request = {
+    "image": {
+      "content": img
+    }
+  };
+
+  var results = await client.labelDetection(request);
   return results;
 }
 
@@ -40,7 +51,12 @@ function encodeImage(filePath) {
 }
 
 async function getVisionResults(img) {
-  var visionResults = await parseVision(encodedImage);
+  var visionTextResults = await parseTextVision(img);
+  var visionLabelResults = await parseLabelVision(img);
+  var visionResults = {
+    "text": visionTextResults,
+    "label": visionLabelResults
+  };
   console.log("got vision results");
   jsonString = JSON.stringify(visionResults);
   fs.writeFile("results.json", jsonString, "utf8");
@@ -97,7 +113,7 @@ function getLineTabGroups(lineStarts, threshold){
   if (lineStarts.length == 1) {
     return [lineStarts];
   }
-  console.log("Line starts: " + lineStarts);
+  //console.log("Line starts: " + lineStarts);
 
   let avgStart = average(lineStarts.map(x => {return x[0]}));
 
@@ -125,9 +141,12 @@ function getLineTabGroups(lineStarts, threshold){
 
 
 //fixes camel case and tabbing in vision results
-function fixCamelCase(visionResults) {
+function fixCamelCase(visionResults, labelResults) {
   //words is a 2d array - rows are lines, each there are words in each line
   //start words with the first word in the first line
+  //var xBox = visionResults[0].textAnnotations[0].boundingPoly.vertices
+  console.log(labelResults[0].labelAnnotations[4]);
+
   var words = [[visionResults[0].textAnnotations[1].description]];
   var wordsIndex = 0;
   var xDiffs = [[]];
@@ -187,7 +206,8 @@ function fixCamelCase(visionResults) {
       wordStrings.push(wordString + words[i].join(" "));
     }
   }
-  console.log(wordStrings.join("\n"));
+  //uncomment this
+  //console.log(wordStrings.join("\n"));
   return wordStrings.join("\n");
 }
 
@@ -239,8 +259,9 @@ app.post("/image", async function(req, res) {
   // console.log(encodedImage);
   // console.log(targetAddress);
 
-  var visionAPIResults = await parseVision(encodedImage);
-  var codeString = fixCamelCase(visionAPIResults);
+  var visionAPIResults = await parseTextVision(encodedImage);
+  var labelAPIResults = await parseLabelVision(encodedImage);
+  var codeString = fixCamelCase(visionAPIResults, labelAPIResults);
   var codeLang = "";
   if( codeString.indexOf("{") > -1 ) {
     codeLang = "C";
