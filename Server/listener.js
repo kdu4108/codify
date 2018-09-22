@@ -107,6 +107,29 @@ function getSpaceSize(words, xDiffs){
   return average(spaceDiffs);
 }
 
+function categorize(lst, thresh) {
+  if (lst.length ==1) {
+    return [lst];
+  }
+
+  let avg = average(lst);
+
+  let midIndex = lst.findIndex(function(num) {
+    return num > avg;
+  }) - 1;
+
+  let lowerList = lst.slice(0, midIndex+1);
+  let upperList = lst.slice(midIndex+1, lst.length+1);
+
+  let lowerAvg = average(lowerList);
+  let upperAvg = average(upperList);
+  if(upperAvg - lowerAvg > thresh) {
+    return categorize(lowerList, thresh).concat(categorize(upperList, thresh));
+  } else {
+    return [lst];
+  }
+}
+
 function getLineTabGroups(lineStarts, threshold){
 
 
@@ -179,42 +202,76 @@ function arrangeWords(visionResults) {
   var slant = slantResults.slant;
   var words = slantResults.words;
 
+  var textAnnotations = visionResults[0].textAnnotations;
 
-  var lines = [[words[0].text]];
-  var lineStarts = [translateCoordinates(slant, getCenter(words[0].symbols[0]))];
-  var wordIndex = 0;
-  var xDiffs = [[]];
-  var xs = [getCenter(words[0].symbols[0])];
-  var translatedXs = [translatedCoordinates(getCenter(words[0].symbols[0]))];
-
-  for (var w = 0; w < words.length-1; w++) {
-    var thisWord = words[w];
-    var nextWord = words[w+1];
-
-    var thisWordEnd = getCenter(thisWord.symbols[thisWord.symbols.length-1]);
-    var nextWordStart = getCenter(nextWord.symbols[0])
-
-    thisWordEnd = translateCoordinates(slant, thisWordEnd);
-    nextWordStart = translateCoordinates(slant, nextWordStart);
-
-    xDifference = nextWordStart[0] - thisWordEnd[0];
-    yDifference = nextWordStart[1] - thisWordEnd[1];
-
-    if (xDifference < 0 && yDifference > 0) {
-      wordIndex++;
-      lines.push([]);
-      xDiffs.push([]);
-      lineStarts.push(nextWordStart[0]);
-    } else {
-      xDiffs[wordIndex].push(nextWord.text);
-    }
-    lines[wordIndex].push(nextWord.text);
-
+  var translatedYs = [];
+  var xDiffs = [];
+  for(var w = 0; w < words.length; w++) {
+    translatedYs.push([translateCoordinates(slant, getCenter(words[w].symbols[0]))[1],w]);
   }
 
-  console.log(lines);
+  for(var t = 1; t < textAnnotations.length-1; t++) {
+    //not quite accurate with translation - bc we are just picking a corner, and we need to do that smarter
+    var thisWord = translateCoordinates(slant, [textAnnotations[t].boundingPoly.vertices[1].x, textAnnotations[t].boundingPoly.vertices[1].y]);
+    var nextWord = translateCoordinates(slant, [textAnnotations[t+1].boundingPoly.vertices[0].x, textAnnotations[t+1].boundingPoly.vertices[0].y]);
 
-  return "hi";
+    if (!(nextWord[0] < thisWord[0] && nextWord[1] > thisWord[1])) {
+      xDiffs.push(nextWord[0] - thisWord[0]);
+    }
+  }
+
+  //using 20 for now
+  console.log(average(xDiffs));
+  var categorizedLines = getLineTabGroups(translatedYs, average(xDiffs));
+  for (var c = 0; c < categorizedLines.length; c++) {
+    categorizedLines[c].sort(function(a,b) {
+       var aT = translateCoordinates(slant, getCenter(words[a[1]].symbols[0]))[0];
+       var bT = translateCoordinates(slant, getCenter(words[b[1]].symbols[0]))[0];
+       return aT-bT;
+     });
+    categorizedLines[c] = categorizedLines[c].map(a => words[a[1]]);
+  }
+
+
+
+
+
+
+
+  // var lines = [[words[0].text]];
+  // var lineStarts = [translateCoordinates(slant, getCenter(words[0].symbols[0]))];
+  // var wordIndex = 0;
+  // var xDiffs = [[]];
+  // var xs = [[words[0].text, getCenter(words[0].symbols[0])[0]]];
+  // var translatedXs = [[words[0].text, translateCoordinates(slant, getCenter(words[0].symbols[0]))[0]]];
+  // var translatedYs = [translateCoordinates(slant, getCenter(words[0].symbols[0]))[1]];
+  // for (var w = 0; w < words.length-1; w++) {
+  //   var thisWord = words[w];
+  //   var nextWord = words[w+1];
+  //
+  //   var thisWordEnd = getCenter(thisWord.symbols[thisWord.symbols.length-1]);
+  //   var nextWordStart = getCenter(nextWord.symbols[0])
+  //   xs.push([nextWord.text, nextWordStart[0]]);
+  //   thisWordEnd = translateCoordinates(slant, thisWordEnd);
+  //   nextWordStart = translateCoordinates(slant, nextWordStart);
+  //   translatedXs.push([nextWord.text, nextWordStart[0]]);
+  //   translatedYs.push(nextWordStart[1]);
+  //   xDifference = nextWordStart[0] - thisWordEnd[0];
+  //   yDifference = nextWordStart[1] - thisWordEnd[1];
+  //
+  //   if (xDifference < 0 && yDifference > 0) {
+  //     wordIndex++;
+  //     lines.push([]);
+  //     xDiffs.push([]);
+  //     lineStarts.push(nextWordStart[0]);
+  //   } else {
+  //     xDiffs[wordIndex].push(nextWord.text);
+  //   }
+  //   lines[wordIndex].push(nextWord.text);
+  //
+  // }
+  //
+  // return "hi";
 }
 
 function translateCoordinates(slant, point) {
@@ -223,7 +280,6 @@ function translateCoordinates(slant, point) {
   var yPrime = point[1] * Math.cos(theta) + point[0] * Math.sin(theta);
   return [xPrime, yPrime];
 }
-
 
 
 //fixes camel case and tabbing in vision results
