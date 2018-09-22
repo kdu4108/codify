@@ -139,13 +139,37 @@ function getLineTabGroups(lineStarts, threshold){
   }
 }
 
+function slantDetection(visionResults) {
+  var fullAnnotation = visionResults[0].fullTextAnnotation;
+  var slants = [];
+  for (var p = 0; p < fullAnnotation.pages.length; p++) {
+    for (var b = 0; b < fullAnnotation.pages[p].blocks.length; b++) {
+      for (var r = 0; r < fullAnnotation.pages[p].blocks[b].paragraphs.length; r++) {
+        console.log(fullAnnotation.pages[p].blocks[b].paragraphs[r].words);
+        for(var w = 0; w < fullAnnotation.pages[p].blocks[b].paragraphs[r].words.length; r++) {
+          var word = fullAnnotation.pages[p].blocks[b].paragraphs[r].words[w];
+          if(word.symbols.length > 4) {
+            var first_char = word.symbols[0];
+            var last_char = word.symbols[word.symbols.length - 1];
+            var first_char_center = [average(first_char.boundingBox.vertices.map(v=>v.x), average(first_char.boundingBox.vertices.map(v=>v.y)))];
+            var last_char_center = [average(last_char.boundingBox.vertices.map(v=>v.x), average(last_char.boundingBox.vertices.map(v=>v.y)))];
+            var slant = (last_char_center[1]-first_char_center[1])/(last_char_center[0]-first_char_center[0]);
+            slants.push(slant);
+          }
+        }
+      }
+    }
+  }
+  return average(slants);
+}
 
 //fixes camel case and tabbing in vision results
 function fixCamelCase(visionResults, labelResults) {
   //words is a 2d array - rows are lines, each there are words in each line
   //start words with the first word in the first line
   //var xBox = visionResults[0].textAnnotations[0].boundingPoly.vertices
-  console.log(labelResults[0].labelAnnotations[4]);
+  var slant = slantDetection(visionResults);
+  print("slant: " + slant);
 
   var words = [[visionResults[0].textAnnotations[1].description]];
   var wordsIndex = 0;
