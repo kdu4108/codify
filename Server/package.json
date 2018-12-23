@@ -1,0 +1,23 @@
+{
+  "name": "server",
+  "version": "1.0.0",
+  "description": "",
+  "main": "listener.js",
+  "dependencies": {
+    "@google-cloud/vision": "^0.24.0",
+    "dotenv": "^6.2.0",
+    "express": "^4.16.4",
+    "language-classifier": "^0.0.1",
+    "path": "^0.12.7",
+    "pngjs-draw": "0.0.6",
+    "pureimage": "^0.1.6",
+    "request": "^2.88.0",
+    "xmlhttprequest": "^1.8.0"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC"
+}

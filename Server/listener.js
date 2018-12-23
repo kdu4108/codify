@@ -15,6 +15,8 @@ const png = drawing(require("pngjs").PNG);
 //if this is put on a different computer, you must set options (they are in local variables on mine)
 const client = new vision.ImageAnnotatorClient();
 const app = express();
+const PImage = require("pureimage");
+const path = require("path");
 
 app.use(bodyParser.json({limit: "50mb", extended: true}));
 app.use(bodyParser.text({limit:"50mb", extended:true}));
@@ -156,6 +158,11 @@ function getLineTabGroups(lineStarts, threshold){
   let lowerList = lineStarts.slice(0, midIndex + 1);
   let upperList = lineStarts.slice(midIndex + 1, lineStarts.length + 1);
 
+  // console.log("average to split on: " + avgStart);
+  // console.log("lower list");
+  // console.log(lowerList.sort((a,b)=>a-b));
+  // console.log("upper list");
+  // console.log(upperList.sort((a,b)=>a-b));
 
   let lowerAvg = average(lowerList.map(x => {return x[0]}));
   let upperAvg = average(upperList.map(x => {return x[0]}));
@@ -163,9 +170,11 @@ function getLineTabGroups(lineStarts, threshold){
 
 
   if (upperAvg - lowerAvg > threshold) {
+    // console.log("different enough");
     return getLineTabGroups(lowerList, threshold).concat(getLineTabGroups(upperList, threshold))
   }
   else {
+    // console.log("not different enough");
     // base case
     return [lineStarts];
   }
@@ -177,20 +186,26 @@ function getCenter(char) {
 
 function slantDetection(visionResults) {
   var fullAnnotation = visionResults[0].fullTextAnnotation;
+  // console.log(visionResults[0].textAnnotations[0].description);
   var slants = [];
   var words = [];
+  var lines = [];
   for (var p = 0; p < fullAnnotation.pages.length; p++) {
     for (var b = 0; b < fullAnnotation.pages[p].blocks.length; b++) {
       for (var r = 0; r < fullAnnotation.pages[p].blocks[b].paragraphs.length; r++) {
+        // console.log(fullAnnotation.pages[p].blocks[b].paragraphs[r].words.map(function(w) {return w.symbols.map((s)=>s.text).join("")}).join(" "));
         for (var w = 0; w < fullAnnotation.pages[p].blocks[b].paragraphs[r].words.length; w++) {
           var word = fullAnnotation.pages[p].blocks[b].paragraphs[r].words[w];
+          // console.log(word.symbols.map((s)=>s.text).join(""));
           if(word.symbols.length > 4) {
             var first_char = word.symbols[0];
             var last_char = word.symbols[word.symbols.length - 1];
             var first_char_center = getCenter(first_char);
             var last_char_center = getCenter(last_char);
+            lines.push([...first_char_center,...last_char_center].map((d)=>Math.round(d)));
             var slant = (last_char_center[1]-first_char_center[1])/(last_char_center[0]-first_char_center[0]);
-            slants.push(slant);
+            var angle = Math.atan(slant);
+            slants.push(angle);
           }
           var wordString = word.symbols.map(s => s.text).join("");
           var wordObject = JSON.parse(JSON.stringify(word));
@@ -202,7 +217,8 @@ function slantDetection(visionResults) {
   }
   return {
     "slant": average(slants),
-    "words": words
+    "words": words,
+    "lines": lines
   };
 }
 
@@ -227,16 +243,45 @@ function arrayDivide(arr, d) {
 function arrayFunc(arr, f) {
   var funced = [];
   for (var i = 0; i < arr.length; i++) {
-    console.log(arr[i]);
-    console.log(f(arr[i]));
     funced.push(f(arr[i]));
   }
   return funced;
 }
 
-async function arrangeWords(visionResults) {
+function stddev(arr) {
+  var avg = average(arr);
+  var diffs = arr.map(v => v - avg);
+  var squareDiffs = diffs.map(x => x*x);
+  var averageSquareDiff = average(squareDiffs);
+  return Math.sqrt(averageSquareDiff);
+}
+
+function arrangeWords(visionResults) {
 
   var slantResults = slantDetection(visionResults);
+
+
+  var BUILD_DIR = "/Users/georgiashay/Documents/0Projects/HackMIT/Whiteboard/hackmit2018/Server/";
+  PImage.decodeJPEGFromStream(fs.createReadStream("currentIMG.jpg")).then((img) => {
+      // console.log("size is",img.width,img.height);
+      var img2 = PImage.make(img.width,img.height);
+      var c = img2.getContext('2d');
+      c.drawImage(img);
+      // c.drawLine({start: {x: 0, y: 0}, end: {x: 1000, y:1000}});
+      c.strokeStyle = 'rgba(255, 0, 0, 2)'
+      c.lineWidth = 10;
+      for(var i = 0; i < slantResults.lines.length; i++) {
+        var l = slantResults.lines[i];
+        c.drawLine({start: {x: l[0], y: l[1]}, end: {x: l[2], y: l[3]}});
+      }
+      var pth = path.join(BUILD_DIR,"annotatedIMG.jpg");
+      PImage.encodeJPEGToStream(img2,fs.createWriteStream(pth)).then(() => {
+          console.log("done writing");
+      });
+  });
+
+  // var fullText = visionResults[0].textAnnotations[0].description;
+
   var slant = slantResults.slant;
   var words = slantResults.words;
 
@@ -246,9 +291,10 @@ async function arrangeWords(visionResults) {
   var xDiffs = [[]];
   var xDiffsFlat = []
   for(var w = 0; w < words.length; w++) {
-    translatedYs.push([translateCoordinates(slant, getCenter(words[w].symbols[0]))[1],w]);
+    translatedYs.push([translateCoordinates(slant, getCenter(words[w].symbols[0]))[1],w,words[w].text,getCenter(words[w].symbols[0])[1]]);
   }
 
+  translatedYs.sort(function(a,b) {return a[0]-b[0]});
   for(var t = 1; t < textAnnotations.length-1; t++) {
     //not quite accurate with translation - bc we are just picking a corner, and we need to do that smarter
     var thisWord = translateCoordinates(slant, [textAnnotations[t].boundingPoly.vertices[1].x, textAnnotations[t].boundingPoly.vertices[1].y]);
@@ -259,7 +305,9 @@ async function arrangeWords(visionResults) {
     }
   }
 
+  console.log(translatedYs);
   var categorizedLines = getLineTabGroups(translatedYs, average(xDiffsFlat));
+
   for (var c = 0; c < categorizedLines.length; c++) {
     categorizedLines[c].sort(function(a,b) {
        var aT = translateCoordinates(slant, getCenter(words[a[1]].symbols[0]))[0];
@@ -268,6 +316,9 @@ async function arrangeWords(visionResults) {
      });
     categorizedLines[c] = categorizedLines[c].map(a => words[a[1]]);
   }
+
+  // console.log(categorizedLines.map(c=>c.map(a=>a.text)));
+
 
 
   for (var l = 0; l < categorizedLines.length; l++) {
@@ -280,18 +331,6 @@ async function arrangeWords(visionResults) {
   for (var c = 0; c < categorizedLines.length; c++) {
     lineStarts.push(translateCoordinates(slant, getCenter(categorizedLines[c][0].symbols[0]))[0]);
   }
-
-
-  // var sortedLineStarts = lineStarts.sort((a,b) => {return a-b});
-  // var onePoint = Math.max(...sortedLineStarts);
-  // var zeroPoint = Math.min(...sortedLineStarts);
-  // var normalized = arrayFunc(sortedLineStarts, function(a) {return (a-zeroPoint)/(onePoint-zeroPoint);});
-  // var diffs = arrayDiff(normalized);
-  // var inverseDiffs = arrayFunc(diffs, function(a) {return 1/a;});
-  //
-  // var lineWindex = lineStarts.map((element,index) => {return [element, index]});
-  // lineWindex.sort((a,b) => {return a[0]-b[0]});
-
 
 
 
@@ -336,32 +375,32 @@ async function arrangeWords(visionResults) {
     }
   }
   //uncomment this
-  console.log(wordStrings.join("\n"));
+  // console.log(wordStrings.join("\n"));
   return wordStrings.join("\n");
 
 
 }
 
-function translateCoordinates(slant, point) {
-  var theta = Math.atan(slant);
+function translateCoordinates(theta, point) {
+  //var theta = Math.atan(slant);
   var xPrime = point[0] * Math.cos(theta) + point[1] * Math.sin(theta);
-  var yPrime = point[1] * Math.cos(theta) + point[0] * Math.sin(theta);
+  var yPrime = point[1] * Math.cos(theta) - point[0] * Math.sin(theta);
   return [xPrime, yPrime];
 }
 
 
 //fixes camel case and tabbing in vision results
-async function fixCamelCase(visionResults, labelResults) {
+function fixCamelCase(visionResults, labelResults) {
   //words is a 2d array - rows are lines, each there are words in each line
   //start words with the first word in the first line
   //var xBox = visionResults[0].textAnnotations[0].boundingPoly.vertices
   var slant = slantDetection(visionResults);
-  console.log("slant: " + slant.slant);
+  // console.log("slant: " + slant.slant);
   for (var w = 0; w < slant.words.length; w++) {
-    //console.log(slant.words[w].text);
+    // console.log(slant.words[w].text);
   }
 
-  await arrangeWords(visionResults);
+  arrangeWords(visionResults);
 
   // var words = [[visionResults[0].textAnnotations[1].description]];
   // var wordsIndex = 0;
@@ -430,6 +469,18 @@ async function fixCamelCase(visionResults, labelResults) {
 
 
 
+async function fromFile(fileName) {
+  fs.readFile(fileName, "base64", async function readFileCallback(err, encodedImage) {
+    var visionAPIResults = await parseTextVision(encodedImage);
+    var labelAPIResults = await parseLabelVision(encodedImage);
+    var codeString = fixCamelCase(visionAPIResults, labelAPIResults);
+    console.log(codeString);
+  })
+
+}
+
+fromFile("currentIMG.png");
+
 // fs.readFile("results.json", "utf8", function readFileCallback(err, data) {
 //   if(err) {
 //     console.log(err);
@@ -438,7 +489,6 @@ async function fixCamelCase(visionResults, labelResults) {
 //     outputString = fixCamelCase(visionResults);
 //     console.log(outputString);
 //     console.log(lang(outputString));
-//
 //   }
 // });
 
